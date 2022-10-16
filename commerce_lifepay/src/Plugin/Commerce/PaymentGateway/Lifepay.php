@@ -493,7 +493,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
 
     /**
      * Get VAT options
-     * @return [type] [description]
+     * @return string[]
      */
     public static function getVatOptions()
     {
@@ -522,7 +522,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
 
     /**
      * Get unit options
-     * @return string[][]
+     * @return string[]
      */
     private function getUnitOptions()
     {
@@ -542,106 +542,44 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
     }
 
     /**
-     * Get API version options
-     *
-     * @return array
+     * Get payment method options
+     * @return string []
      * @since
      */
-    public static function get_payment_method_options()
+    public static function getPaymentMethodOptions()
     {
         return [
-            [
-                'id' => 'full_prepayment',
-                'name' => 'Предоплата 100%',
-            ],
-            [
-                'id' => 'prepayment',
-                'name' => 'Предоплата',
-            ],
-            [
-                'id' => 'advance',
-                'name' => 'Аванс',
-            ],
-            [
-                'id' => 'full_payment',
-                'name' => 'Полный расчёт',
-            ],
-            [
-                'id' => 'partial_payment',
-                'name' => 'Частичный расчёт',
-            ],
-            [
-                'id' => 'credit',
-                'name' => 'Передача в кредит',
-            ],
-            [
-                'id' => 'credit_payment',
-                'name' => 'Оплата кредита',
-            ]
+            'full_prepayment' => 'Предоплата 100%',
+            'prepayment' => 'Предоплата',
+            'advance' => 'Аванс',
+            'full_payment' => 'Полный расчёт',
+            'partial_payment' => 'Частичный расчёт',
+            'credit' => 'Передача в кредит',
+            'credit_payment' => 'Оплата кредита',
         ];
     }
 
     /**
-     * Get API version options
-     *
-     * @return array
+     * Get payment object options
+     * @return string[]
      * @since
      */
-    public static function get_payment_object_options()
+    public static function getPaymentObjectOptions()
     {
         return [
-            [
-                'id' => 'commodity',
-                'name' => 'Товар (Значение по умолчанию. Передается, в том числе, при отсутствии параметра)',
-            ],
-            [
-                'id' => 'excise',
-                'name' => 'Подакциозный товар',
-            ],
-            [
-                'id' => 'job',
-                'name' => 'Работа',
-            ],
-            [
-                'id' => 'service',
-                'name' => 'Услуга',
-            ],
-            [
-                'id' => 'gambling_bet',
-                'name' => 'Ставка азартной игры',
-            ],
-            [
-                'id' => 'gambling_prize',
-                'name' => 'Выигрыш азартной игры',
-            ],
-            [
-                'id' => 'lottery',
-                'name' => 'Лотерейный билет',
-            ],
-            [
-                'id' => 'lottery_prize',
-                'name' => 'Выигрыш лотереи',
-            ],
-            [
-                'id' => 'intellectual_activity',
-                'name' => 'Предоставление результатов интеллектуальной деятельности',
-            ],
-            [
-                'id' => 'payment',
-                'name' => 'Платёж',
-            ],
-            [
-                'id' => 'agent_commission',
-                'name' => 'Агентское вознаграждение',
-            ],
-            [
-                'id' => 'composite',
-                'name' => 'Составной предмет расчёта',
-            ],
-            [
-                'id' => 'another',
-                'name' => 'Другое',
-            ],
+            'commodity' => 'Товар (Значение по умолчанию. Передается, в том числе, при отсутствии параметра)',
+            'excise' => 'Подакциозный товар',
+            'job' => 'Работа',
+            'service' => 'Услуга',
+            'gambling_bet' => 'Ставка азартной игры',
+            'gambling_prize' => 'Выигрыш азартной игры',
+            'lottery' => 'Лотерейный билет',
+            'lottery_prize' => 'Выигрыш лотереи',
+            'intellectual_activity' => 'Предоставление результатов интеллектуальной деятельности',
+            'payment' => 'Платёж',
+            'agent_commission' => 'Агентское вознаграждение',
+            'composite' => 'Составной предмет расчёта',
+            'another' => 'Другое',
         ];
     }
 }
