@@ -1,0 +1,13 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the Lifepay module.
+ */
+
+/**
+ * Implements hook_requirements().
+ */
+function commerce_lifepay_requirements($phase) {
+  $requirements = [];
+  return $requirements;
+}

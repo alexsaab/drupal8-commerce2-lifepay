@@ -1,0 +1,6 @@
+lifepay_fee:
+  label: 'Lifepay Fee'
+  singular_label: 'Lifepay Fee'
+  plural_label: 'Lifepay Fees'
+  has_ui: true
+  weight: 100
