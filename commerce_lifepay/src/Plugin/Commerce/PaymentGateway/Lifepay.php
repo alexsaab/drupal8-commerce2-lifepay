@@ -99,6 +99,98 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
             '#required' => false,
         ];
 
+        $form['api_version'] = [
+            '#type' => 'select',
+            '#title' => $this->t("API version"),
+            '#description' => $this->t("See you API version in partner (merchant) interface"),
+            '#options' => self::getApiVersionOptions(),
+            '#default_value' => $this->configuration['api_version'],
+            '#required' => true,
+        ];
+
+        $form['payment_method'] = [
+            '#type' => 'select',
+            '#title' => $this->t("Payment method"),
+            '#description' => $this->t("Select payment method usually full_prepayment"),
+            '#options' => self::getPaymentMethodOptions(),
+            '#default_value' => $this->configuration['payment_method'],
+            '#required' => true,
+        ];
+
+        $form['vat_products'] = [
+            '#type' => 'select',
+            '#title' => $this->t("VAT for products"),
+            '#description' => $this->t("Select VAT for products"),
+            '#options' => self::getVatOptions(),
+            '#default_value' => $this->configuration['vat_products'],
+            '#required' => true,
+        ];
+
+        $form['vat_delivery'] = [
+            '#type' => 'select',
+            '#title' => $this->t("VAT for delivery"),
+            '#description' => $this->t("Select VAT for delivery"),
+            '#options' => self::getVatOptions(),
+            '#default_value' => $this->configuration['vat_delivery'],
+            '#required' => true,
+        ];
+
+        $form['unit_products'] = [
+            '#type' => 'select',
+            '#title' => $this->t("Object for products"),
+            '#description' => $this->t("Select units for products"),
+            '#options' => self::getVatOptions(),
+            '#default_value' => $this->configuration['unit_products'],
+            '#required' => true,
+        ];
+
+        $form['unit_delivery'] = [
+            '#type' => 'select',
+            '#title' => $this->t("Units for delivery"),
+            '#description' => $this->t("Select units for delivery"),
+            '#options' => self::getVatOptions(),
+            '#default_value' => $this->configuration['unit_delivery'],
+            '#required' => true,
+        ];
+
+        $form['object_products'] = [
+            '#type' => 'select',
+            '#title' => $this->t("Object for products"),
+            '#description' => $this->t("Select objects for products"),
+            '#options' => self::getPaymentObjectOptions(),
+            '#default_value' => $this->configuration['object_products'],
+            '#required' => true,
+        ];
+
+        $form['object_delivery'] = [
+            '#type' => 'select',
+            '#title' => $this->t("Object for delivery"),
+            '#description' => $this->t("Select objects for delivery"),
+            '#options' => self::getPaymentObjectOptions(),
+            '#default_value' => $this->configuration['object_delivery'],
+            '#required' => true,
+        ];
+
+        $form['send_phone'] = [
+            '#type' => 'checkbox',
+            '#title' => $this->t("Attach phone in order"),
+            '#description' => $this->t("Attach phone in order or not"),
+            '#value' => true,
+            '#false_values' => [false],
+            '#default_value' => $this->configuration['send_phone'],
+            '#required' => true,
+        ];
+
+        $form['send_email'] = [
+            '#type' => 'checkbox',
+            '#title' => $this->t("Attach email in order"),
+            '#description' => $this->t("Attach email in order or not"),
+            '#value' => true,
+            '#false_values' => [false],
+            '#default_value' => $this->configuration['send_email'],
+            '#required' => true,
+        ];
+
         $form['description'] = [
             '#type' => 'textfield',
             '#title' => $this->t("Order description"),
@@ -107,47 +199,12 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
             '#required' => true,
         ];
 
-        foreach ($this->getProductTypes() as $type) {
-            $form['vat_product_'.$type] = [
-                '#type' => 'select',
-                '#title' => $this->t("Vat rate for product type ".$type),
-                '#description' => $this->t("Set vat rate for product ".$type),
-                '#options' => [
-                    'Y' => $this->t('With VAT'),
-                    'N' => $this->t('WIthout VAT'),
-                ],
-                '#default_value' => $this->configuration['vat_product_'.$type],
-                '#required' => true,
-            ];
-        }
-
-        $form['vat_shipping'] = [
-            '#type' => 'select',
-            '#title' => $this->t("Vat rate for shipping"),
-            '#description' => $this->t("Set vat rate for shipping"),
-            '#options' => [
-                'Y' => $this->t('With VAT'),
-                'N' => $this->t('WIthout VAT'),
-            ],
-            '#default_value' => $this->configuration['vat_shipping'],
-            '#required' => true,
-        ];
-
-        $form['use_ip_only_from_server_list'] = [
-            '#type' => 'checkbox',
-            '#title' => $this->t("Use server IP"),
-            '#description' => $this->t("Use server IP for callback only from list"),
-            '#value' => true,
-            '#false_values' => [false],
-            '#default_value' => $this->configuration['use_ip_only_from_server_list'],
-            '#required' => true,
-        ];
-
-        $form['server_list'] = [
-            '#type' => 'textarea',
-            '#title' => $this->t("Acceptable server list"),
-            '#description' => $this->t("Input new server IP in each new string"),
-            '#default_value' => $this->configuration['server_list'],
+        $form['instruction'] = [
+            '#type' => 'textfield',
+            '#title' => $this->t("Order instruction"),
+            '#description' => $this->t("Order instruction in Lifepay interface"),
+            '#default_value' => $this->configuration['instruction'],
+            '#required' => false,
         ];
 
         return $form;
@@ -512,7 +569,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * Get API version options
      * @return string[]
      */
-    private static function getGetApiVersionOptions()
+    private static function getApiVersionOptions()
     {
         return [
             '1.0' => '1.0',
