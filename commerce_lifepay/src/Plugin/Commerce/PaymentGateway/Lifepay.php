@@ -256,10 +256,14 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      */
     public function onNotify(Request $request)
     {
-        $x_login = $this->configuration['x_login'];
-        $secret = $this->configuration['secret'];
-        // try to get values from request
-        $orderId = self::getRequest('x_invoice_num');
+
+        $posted = \Drupal::request()->request->get();
+
+        if (empty($posted)) {
+            $posted = \Drupal::request()->query->get();
+        }
+
+        $orderId = self::getRequest('order_id');
 
         if (!isset($orderId)) {
             \Drupal::messenger()->addMessage($this->t('Site can not get info from you transaction. Please return to store and perform the order'),
@@ -270,48 +274,33 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
         }
 
         $order = Order::load($orderId);
-
-
-        $total_price = $order->getTotalPrice();
-        $orderTotal = ($total_price->getNumber()) ?
-            number_format($total_price->getNumber(), 2, '.', '') : 0.00;
-
-        $x_response_code = self::getRequest('x_response_code');
-        $x_trans_id = self::getRequest('x_trans_id');
-        $x_MD5_Hash = self::getRequest('x_MD5_Hash');
-        $calculated_x_MD5_Hash = self::get_x_MD5_Hash($x_login, $x_trans_id, $orderTotal, $secret);
+        $transactionId = self::getRequest('tid');
         $paymentStorage = \Drupal::entityTypeManager()->getStorage('commerce_payment')->loadByProperties(['order_id' => [$orderId]]);
         $payment = end($paymentStorage);
         $paymentStorage = $this->entityTypeManager->getStorage('commerce_payment');
 
         if ($payment->state->value != 'complete') {
-            if ($this->checkInServerList()) {
-                if ($x_response_code == 1 && $calculated_x_MD5_Hash == $x_MD5_Hash) {
-                    $payment = $paymentStorage->create([
-                        'state' => 'complete',
-                        'amount' => $order->getTotalPrice(),
-                        'payment_gateway' => $this->entityId,
-                        'order_id' => $orderId,
-                        'remote_id' => $x_trans_id,
-                        'remote_state' => 'complete',
-                        'state' => 'complete',
-                    ]);
-                    $payment->save();
-                    // Change order statuses to remove from busket
-                    $order->set('order_number', $orderId);
-                    $order->set('cart', 0);
-                    $order->set('state', 'validation');
-                    $order->set('placed', time());
-                    $order->save();
-                } else {
-                    $this->onCancel($order, $request);
-                    return;
-                }
+            if ($this->checkIpnRequestIsValid()) {
+                $payment = $paymentStorage->create([
+                    'state' => 'complete',
+                    'amount' => $order->getTotalPrice(),
+                    'payment_gateway' => $this->entityId,
+                    'order_id' => $orderId,
+                    'remote_id' => $transactionId,
+                    'remote_state' => 'complete',
+                    'state' => 'complete',
+                ]);
+                $payment->save();
+                // Change order statuses to remove from busket
+                $order->set('order_number', $orderId);
+                $order->set('cart', 0);
+                $order->set('state', 'validation');
+                $order->set('placed', time());
+                $order->save();
             } else {
                 $this->onCancel($order, $request);
                 return;
             }
-
         } else {
             \Drupal::messenger()->addMessage($this->t('Order complete! Thank you for payment'), 'success');
             $this->onReturn($order, $request);
@@ -536,22 +525,105 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
     }
 
     /**
-     * Check if IP adress in server lists
+     * Check LIFE PAY IPN validity
+     * @param $method
+     * @param $posted
      * @return bool
      */
-    public function checkInServerList()
+    private function checkIpnRequestIsValid($posted)
     {
-        if ($this->configuration['use_ip_only_from_server_list']) {
-            $clientIp = \Drupal::request()->getClientIp();
-            $serverIpList = preg_split('/\r\n|[\r\n]/', $this->configuration['server_list']);
-            if (in_array($clientIp, $serverIpList)) {
-                return true;
-            } else {
-                return false;
-            }
-        } else {
-            return true;
+        $url = \Drupal::request()->getHost() . $_SERVER['REQUEST_URI'];
+        $check = $posted['check'];
+        unset($posted['check']);
+
+        if ($this->configuration['api_version'] === '2.0') {
+            $signature = $this->getSign2("POST", $url, $posted, $this->configuration['skey']);
+        } elseif ($this->configuration['api_version'] === '1.0') {
+            $signature = $this->getSign1($posted, $this->configuration['skey']);
         }
+
+        if ($signature === $check) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Part of sign generator
+     * @param $queryData
+     * @param string $argSeparator
+     * @return string
+     */
+    private function httpBuildQueryRfc3986($queryData, $argSeparator = '&')
+    {
+        $r = '';
+        $queryData = (array)$queryData;
+        if (!empty($queryData)) {
+            foreach ($queryData as $k => $queryVar) {
+                $r .= $argSeparator . $k . '=' . rawurlencode($queryVar);
+            }
+        }
+        return trim($r, $argSeparator);
+    }
+
+    /**
+     * Sign generator
+     * @param $method
+     * @param $url
+     * @param $params
+     * @param $secretKey
+     * @param false $skipPort
+     * @return string
+     */
+    private function getSign2($method, $url, $params, $secretKey, $skipPort = False)
+    {
+        ksort($params, SORT_LOCALE_STRING);
+
+        $urlParsed = parse_url($url);
+        $path = $urlParsed['path'];
+        $host = isset($urlParsed['host']) ? $urlParsed['host'] : "";
+        if (isset($urlParsed['port']) && $urlParsed['port'] != 80) {
+            if (!$skipPort) {
+                $host .= ":{$urlParsed['port']}";
+            }
+        }
+
+        $method = strtoupper($method) == 'POST' ? 'POST' : 'GET';
+
+        $data = implode("\n",
+            array(
+                $method,
+                $host,
+                $path,
+                $this->httpBuildQueryRfc3986($params)
+            )
+        );
+
+        $signature = base64_encode(
+            hash_hmac("sha256",
+                "{$data}",
+                "{$secretKey}",
+                TRUE
+            )
+        );
+
+        return $signature;
+    }
+
+    /**
+     * Add sign number two version
+     * @param $posted
+     * @param $key
+     * @return string
+     */
+    private function getSign1($posted, $key)
+    {
+        return rawurlencode(md5($posted['tid'] . $posted['name'] . $posted['comment'] . $posted['partner_id'] .
+            $posted['service_id'] . $posted['order_id'] . $posted['type'] . $posted['cost'] . $posted['income_total'] .
+            $posted['income'] . $posted['partner_income'] . $posted['system_income'] . $posted['command'] .
+            $posted['phone_number'] . $posted['email'] . $posted['resultStr'] .
+            $posted['date_created'] . $posted['version'] . $key));
     }
 
     /**
