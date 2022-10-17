@@ -230,16 +230,22 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
         parent::submitConfigurationForm($form, $form_state);
         if (!$form_state->getErrors()) {
             $values = $form_state->getValue($form['#parents']);
-            $this->configuration['x_login'] = $values['x_login'];
-            $this->configuration['secret'] = $values['secret'];
+            $this->configuration['service_id'] = $values['service_id'];
+            $this->configuration['key'] = $values['key'];
+            $this->configuration['skey'] = $values['skey'];
+            $this->configuration['shop_hostname'] = $values['shop_hostname'];
+            $this->configuration['api_version'] = $values['api_version'];
+            $this->configuration['payment_method'] = $values['payment_method'];
+            $this->configuration['vat_products'] = $values['vat_products'];
+            $this->configuration['vat_delivery'] = $values['vat_delivery'];
+            $this->configuration['unit_products'] = $values['unit_products'];
+            $this->configuration['unit_delivery'] = $values['unit_delivery'];
+            $this->configuration['object_products'] = $values['object_products'];
+            $this->configuration['object_delivery'] = $values['object_delivery'];
+            $this->configuration['send_phone'] = $values['send_phone'];
+            $this->configuration['send_email'] = $values['send_email'];
             $this->configuration['description'] = $values['description'];
-            foreach ($this->getProductTypes() as $type) {
-                $this->configuration['vat_product_'.$type] = $values['vat_product_'.$type];
-            }
-
-            $this->configuration['vat_shipping'] = $values['vat_shipping'];
-            $this->configuration['use_ip_only_from_server_list'] = $values['use_ip_only_from_server_list'];
-            $this->configuration['server_list'] = $values['server_list'];
+            $this->configuration['instruction'] = $values['instruction'];
         }
     }
 
