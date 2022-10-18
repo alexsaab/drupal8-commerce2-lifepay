@@ -175,7 +175,7 @@ class Lifepay extends OffsitePaymentGatewayBase
             '#value' => true,
             '#false_values' => [false],
             '#default_value' => $this->configuration['send_email'],
-            '#required' => true,
+            '#required' => false,
         ];
 
         return $form;
