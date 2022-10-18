@@ -28,13 +28,13 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  * )
  * @package Drupal\commerce_lifepay\Plugin\Commerce\PaymentGateway
  */
-class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterface
+class Lifepay extends OffsitePaymentGatewayBase
 {
     /**
      * Return default module settengs
      * @return array
      */
-    public function defaultConfiguration()
+    public function defaultConfiguration(): array
     {
 
         $returned = [
@@ -50,10 +50,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
                 'unit_delivery' => 'service',
                 'object_products' => 'commodity',
                 'object_delivery' => 'service',
-                'send_phone' => false,
-                'send_email' => false,
-                'description' => 'Pay order via Lifepay',
-                'instructions' => 'After submit button you '
+                'send_email' => true,
             ] + parent::defaultConfiguration();
 
         return $returned;
@@ -171,16 +168,6 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
             '#required' => true,
         ];
 
-        $form['send_phone'] = [
-            '#type' => 'checkbox',
-            '#title' => $this->t("Attach phone in order"),
-            '#description' => $this->t("Attach phone in order or not"),
-            '#value' => true,
-            '#false_values' => [false],
-            '#default_value' => $this->configuration['send_phone'],
-            '#required' => true,
-        ];
-
         $form['send_email'] = [
             '#type' => 'checkbox',
             '#title' => $this->t("Attach email in order"),
@@ -189,22 +176,6 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
             '#false_values' => [false],
             '#default_value' => $this->configuration['send_email'],
             '#required' => true,
-        ];
-
-        $form['description'] = [
-            '#type' => 'textfield',
-            '#title' => $this->t("Order description"),
-            '#description' => $this->t("Order description in Lifepay interface"),
-            '#default_value' => $this->configuration['description'],
-            '#required' => true,
-        ];
-
-        $form['instruction'] = [
-            '#type' => 'textfield',
-            '#title' => $this->t("Order instruction"),
-            '#description' => $this->t("Order instruction in Lifepay interface"),
-            '#default_value' => $this->configuration['instruction'],
-            '#required' => false,
         ];
 
         return $form;
@@ -242,17 +213,14 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
             $this->configuration['unit_delivery'] = $values['unit_delivery'];
             $this->configuration['object_products'] = $values['object_products'];
             $this->configuration['object_delivery'] = $values['object_delivery'];
-            $this->configuration['send_phone'] = $values['send_phone'];
             $this->configuration['send_email'] = $values['send_email'];
-            $this->configuration['description'] = $values['description'];
-            $this->configuration['instruction'] = $values['instruction'];
         }
     }
 
     /**
      * Notity payment callback
      * @param Request $request
-     * @return null|\Symfony\Component\HttpFoundation\Response|void
+     * @return void
      */
     public function onNotify(Request $request)
     {
@@ -309,42 +277,6 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
     }
 
     /**
-     * Return hash md5 HMAC
-     * @param $x_login
-     * @param $x_fp_sequence
-     * @param $x_fp_timestamp
-     * @param $x_amount
-     * @param $x_currency_code
-     * @param $secret
-     * @return string
-     */
-    public static function get_x_fp_hash(
-        $x_login,
-        $x_fp_sequence,
-        $x_fp_timestamp,
-        $x_amount,
-        $x_currency_code,
-        $secret
-    ) {
-        $arr = [$x_login, $x_fp_sequence, $x_fp_timestamp, $x_amount, $x_currency_code];
-        $str = implode('^', $arr);
-        return hash_hmac('md5', $str, $secret);
-    }
-
-    /**
-     * Return sign with MD5 algoritm
-     * @param $x_login
-     * @param $x_trans_id
-     * @param $x_amount
-     * @param $secret
-     * @return string
-     */
-    public static function get_x_MD5_Hash($x_login, $x_trans_id, $x_amount, $secret)
-    {
-        return md5($secret.$x_login.$x_trans_id.$x_amount);
-    }
-
-    /**
      * Get post or get method
      * @param null $param
      */
@@ -393,7 +325,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
     public function onReturn(OrderInterface $order, Request $request)
     {
         \Drupal::messenger()->addMessage($this->t('Order complete! Thank you for payment'), 'success');
-        $orderId = self::getRequest('x_invoice_num');
+        $orderId = self::getRequest('order_id');
         if ($user = \Drupal::currentUser()) {
             if ($userId = $user->id()) {
                 $url = '/user/'.$userId.'/orders';
@@ -424,20 +356,10 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
             [
                 '@gateway' => $this->getDisplayLabel(),
             ]), 'error');
-        $orderId = self::getRequest('x_invoice_num');
+        $orderId = self::getRequest('order_id');
         $url = '/checkout/'.$orderId.'/review';
         $response = new RedirectResponse($url, 302);
         $response->send();
-    }
-
-    /**
-     * Get all product types
-     * @return array
-     */
-    public function getProductTypes()
-    {
-        $product_types = \Drupal\commerce_product\Entity\ProductType::loadMultiple();
-        return array_keys($product_types);
     }
 
     /**
@@ -446,27 +368,30 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * @param $config array
      * @return array
      */
-    public static function getOrderItems($order, $config)
+    public static function getOrderItems($order, array $config)
     {
         $itemsArray = [];
+
         foreach ($order->getItems() as $key => $item) {
             $name = $item->getTitle();
             $product = $item->getPurchasedEntity();
             $sku = $product->getSku();
-            $type = $product->getProduct()->get('type')->getString();
-            $price = number_format($item->getUnitPrice()->getNumber(), 2, '.', '');
-            $qty = number_format($item->getQuantity(), 0, '.', '');
-            if (!($vat = $config['vat_product_'.$type])) {
-                $vat = 'no_vat';
-            }
+            $price = (float) number_format($item->getUnitPrice()->getNumber(), 2, '.', '');
+            $qty = (int) number_format($item->getQuantity(), 0, '.', '');
+            $total = $price * $qty;
             $itemsArray[] = [
-                'sku' => $sku,
-                'name' => substr($name, 0, 100),
-                'qty' => $qty,
+                'code' => $sku,
+                'name' => $name,
                 'price' => $price,
-                'tax' => $vat,
+                'unit' => $config['unit_products'],
+                'payment_object' => $config['object_products'],
+                'payment_method' => $config['payment_method'],
+                'quantity' => $qty,
+                'sum' => $total,
+                'vat_mode' => $config['vat_products'],
             ];
         }
+
         return $itemsArray;
     }
 
@@ -476,27 +401,24 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * @param $config array
      * @return array
      */
-    public static function getOrderAdjustments($order, $config)
+    public static function getOrderAdjustments($order, array $config): array
     {
         $itemsArray = [];
         foreach ($order->getAdjustments() as $adjustment) {
-            if ($adjustment->getType() == 'shipping') {
-                $itemsArray[] = [
-                    'sku' => 'shipping',
-                    'name' => substr($adjustment->getLabel(), 0, 100),
-                    'qty' => 1,
-                    'price' => number_format($adjustment->getAmount()->getNumber(), 2, '.', ''),
-                    'tax' => $config['vat_shipping'],
-                ];
-            } else {
-                $itemsArray[] = [
-                    'sku' => $adjustment->getType(),
-                    'name' => substr($adjustment->getLabel(), 0, 100),
-                    'qty' => 1,
-                    'price' => number_format($adjustment->getAmount()->getNumber(), 2, '.', ''),
-                    'tax' => 'no_vat',
-                ];
-            }
+            $price = (float) number_format($adjustment->getAmount()->getNumber(), 2, '.', '');
+            $qty = 1;
+            $total = $price * $qty;
+            $itemsArray[] = [
+                'code' => $adjustment->getType(),
+                'name' => substr($adjustment->getLabel(), 0, 100),
+                'price' => $price,
+                'unit' => $config['unit_delivery'],
+                'payment_object' => $config['object_delivery'],
+                'payment_method' => $config['payment_method'],
+                'quantity' => $qty,
+                'sum' => $total,
+                'vat_mode' => $config['vat_delivery'],
+            ];
         }
         return $itemsArray;
     }
@@ -505,32 +427,20 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * Get formatted order items
      * @param $order
      * @param $configs
+     * @return array
      */
-    public static function getFormattedOrderItems($order, $configs)
+    public static function getFormattedOrderItems($order, $configs): array
     {
         $items = array_merge(self::getOrderItems($order, $configs), self::getOrderAdjustments($order, $configs));
-        $returned = '';
-        foreach ($items as $key => $item) {
-            $lineArr = [];
-            $pos = $key + 1;
-            $lineArr[] = '#'.$pos." ";
-            $lineArr[] = substr($item['sku'], 0, 30);
-            $lineArr[] = substr($item['name'], 0, 250);
-            $lineArr[] = $item['qty'];
-            $lineArr[] = $item['price'];
-            $lineArr[] = $item['tax'];
-            $returned .= implode('<|>', $lineArr)."0<|>\n";
-        }
-        return $returned;
+        return $items;
     }
 
     /**
      * Check LIFE PAY IPN validity
-     * @param $method
      * @param $posted
      * @return bool
      */
-    private function checkIpnRequestIsValid($posted)
+    private function checkIpnRequestIsValid($posted): bool
     {
         $url = \Drupal::request()->getHost() . $_SERVER['REQUEST_URI'];
         $check = $posted['check'];
@@ -555,7 +465,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * @param string $argSeparator
      * @return string
      */
-    private function httpBuildQueryRfc3986($queryData, $argSeparator = '&')
+    private function httpBuildQueryRfc3986($queryData, string $argSeparator = '&'): string
     {
         $r = '';
         $queryData = (array)$queryData;
@@ -576,7 +486,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * @param false $skipPort
      * @return string
      */
-    private function getSign2($method, $url, $params, $secretKey, $skipPort = False)
+    private function getSign2($method, $url, $params, $secretKey, bool $skipPort = false)
     {
         ksort($params, SORT_LOCALE_STRING);
 
@@ -617,7 +527,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * @param $key
      * @return string
      */
-    private function getSign1($posted, $key)
+    private function getSign1($posted, $key): string
     {
         return rawurlencode(md5($posted['tid'] . $posted['name'] . $posted['comment'] . $posted['partner_id'] .
             $posted['service_id'] . $posted['order_id'] . $posted['type'] . $posted['cost'] . $posted['income_total'] .
@@ -630,7 +540,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * Get VAT options
      * @return string[]
      */
-    public static function getVatOptions()
+    public static function getVatOptions(): array
     {
         return [
             'none' => 'НДС не облагается',
@@ -647,7 +557,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * Get API version options
      * @return string[]
      */
-    private static function getApiVersionOptions()
+    private static function getApiVersionOptions(): array
     {
         return [
             '1.0' => '1.0',
@@ -659,7 +569,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * Get unit options
      * @return string[]
      */
-    private function getUnitOptions()
+    private function getUnitOptions(): array
     {
         return [
             'piece' => 'штука',
@@ -681,7 +591,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * @return string []
      * @since
      */
-    public static function getPaymentMethodOptions()
+    public static function getPaymentMethodOptions(): array
     {
         return [
             'full_prepayment' => 'Предоплата 100%',
@@ -699,7 +609,7 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
      * @return string[]
      * @since
      */
-    public static function getPaymentObjectOptions()
+    public static function getPaymentObjectOptions(): array
     {
         return [
             'commodity' => 'Товар (Значение по умолчанию. Передается, в том числе, при отсутствии параметра)',

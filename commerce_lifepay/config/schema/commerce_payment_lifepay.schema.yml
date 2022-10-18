@@ -37,15 +37,6 @@ commerce_payment.commerce_payment_gateway.plugin.lifepay:
     object_delivery:
       type: string
       label: 'Object for delivery'
-    send_phone:
-      type: boolean
-      label: 'Attach phone in order'
     send_email:
       type: boolean
       label: 'Attach email in order'
-    description:
-      type: string
-      label: 'Description method for payment in checkout'
-    instruction:
-      type: string
-      label: 'Instructions for payment in checkout'

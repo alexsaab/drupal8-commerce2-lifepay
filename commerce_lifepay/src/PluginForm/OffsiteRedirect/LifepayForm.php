@@ -4,7 +4,7 @@ namespace Drupal\commerce_lifepay\PluginForm\OffsiteRedirect;
 
 use Drupal\commerce_payment\PluginForm\PaymentOffsiteForm as BasePaymentOffsiteForm;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\commerce_lifepay\Plugin\Commerce\PaymentGateway\Lifepay as PM;
+use Drupal\commerce_lifepay\Plugin\Commerce\PaymentGateway\Lifepay;
 
 
 /**
@@ -27,9 +27,6 @@ class LifepayForm extends BasePaymentOffsiteForm
     {
 
         $form = parent::buildConfigurationForm($form, $form_state);
-
-        // Get now for sign
-        $now = time();
         /** @var \Drupal\commerce_payment\Entity\PaymentInterface $payment */
         $payment = $this->entity;
         /** @var \Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayInterface $payment_gateway_plugin */
@@ -37,35 +34,33 @@ class LifepayForm extends BasePaymentOffsiteForm
         $configs = $payment_gateway_plugin->getConfiguration();
 
         $order = $payment->getOrder();
-        $paymentMachineName = $order->get('payment_gateway')->first()->entity->getOriginalId();
-        $total_price = $order->getTotalPrice();
-        $total_price_number = ($total_price->getNumber()) ?
-                number_format($total_price->getNumber(), 2, '.', '') : 0.00;
+        $totalPrice = $order->getTotalPrice();
+        $totalPriceNumber = ($totalPrice->getNumber()) ?
+                number_format($totalPrice->getNumber(), 2, '.', '') : 0.00;
 
-        $data = [
-            'x_description' => $configs['description'] . $payment->getOrderId(),
-            'x_login' => $configs['x_login'],
-            'x_amount' => $total_price_number,
-            'x_currency_code' => $total_price->getCurrencyCode(),
-            'x_fp_sequence' => $payment->getOrderId(),
-            'x_fp_timestamp' => $now,
-            'x_fp_hash' => PM::get_x_fp_hash($configs['x_login'],  $payment->getOrderId(), $now,$total_price_number,
-                $total_price->getCurrencyCode(), $configs['secret']),
-            'x_invoice_num' => $payment->getOrderId(),
-            'x_relay_response' => "TRUE",
-            'x_relay_url' => $this->getNotifyUrl($paymentMachineName),
-        ];
-
+        $orderId = $payment->getOrderId();
         $customerEmail = $order->getEmail();
+        $items = [];
+        $items['items'] = Lifepay::getFormattedOrderItems($order, $configs);
 
-        // if isset email
-        if ($customerEmail) {
-            $data['x_email'] = $customerEmail;
+        $data = array(
+            'key' => $configs['key'],
+            'cost' => $totalPriceNumber,
+            'order_id' => $orderId,
+            'name' =>  $configs['shop_hostname'] . $orderId,
+            'invoice_data' => json_encode($items),
+        );
+
+        if ($configs['send_email']) {
+            $data['email'] = $customerEmail;
         }
 
-        $x_line_item = PM::getFormattedOrderItems($order, $configs);
-
-        $data['x_line_item'] = $x_line_item;
+        if ($configs['api_version'] === '2.0') {
+            unset($data['key']);
+            $data['version'] = $configs['api_version'];
+            $data['service_id'] = $configs['service_id'];
+            $data['check'] = $this->getSign2('POST', $this->liveurl, $data, $configs['skey']);
+        }
 
         return $this->buildRedirectForm($form, $form_state, $this->payment_url, $data, 'post');
     }
@@ -74,7 +69,7 @@ class LifepayForm extends BasePaymentOffsiteForm
      * Return notify url
      * {@inheritdoc}
      */
-    public function getNotifyUrl($paymentName)
+    public function getNotifyUrl($paymentName): string
     {
         $url = \Drupal::request()->getSchemeAndHttpHost().'/payment/notify/'.$paymentName;
         return $url;
