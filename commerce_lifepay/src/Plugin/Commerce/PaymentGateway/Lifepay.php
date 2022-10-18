@@ -92,7 +92,7 @@ class Lifepay extends OffsitePaymentGatewayBase
             '#type' => 'textfield',
             '#title' => $this->t("Hostname and order description"),
             '#description' => $this->t("Order description with host name"),
-            '#default_value' => $this->configuration['secret'],
+            '#default_value' => $this->configuration['shop_hostname'],
             '#required' => false,
         ];
 
