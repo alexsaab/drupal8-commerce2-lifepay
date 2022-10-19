@@ -8,15 +8,20 @@
 
 3. Создаете новый способ оплаты в качестве типа выбираете "lifepay". 
 
-4. Переходите к настройке созданного метода оплаты, выставляете: 
-- Метка - это то, что будет видеть пользователь в момент оформления заказа и совершения оплаты. 
-- Your Merchant ID - номер магазина в системе Lifepay
-- Secret word for order verification - секретная фраза - также получается из интерфейса продавца системы Lifepay;
-- Описание заказа - то что будет видеть пользователь в момент совершения оплаты;
+4. Переходите к настройке созданного метода оплаты, выставляете:
+- Метка - это то, что будет видеть пользователь в момент оформления заказа и совершения оплаты.
+- Service ID - номер сервиса в системе Lifepay (можно взять из личного кабинета)
+- Ключ (key) - также можно получить из личного кабинета продавца
+- Секретный ключ (skey) - секретный ключ - также берется из личного кабинета продавца
+- Метод оплаты - устанавливаете в соответствии с вашим договором (обычно 100% предоплата);
 - НДС для продуктов (если у вас несколько типов товаров, то для каждого типа может быть свой НДС);
 - НДС для доставки;
-- Use server IP - использовать для обратных вызовов сервера из списка;
-- Acceptable server list - список серверов;
+- Тип товара для продуктов;
+- Тип товара для доставки - обычно, service (сервис);
+- Объект для продуктов;
+- Объект для доставки - обычно, service (сервис);
+- Задействовать ли email для отправки;
+- Order status after successfull payment - статус заказа после его выполнения
 
 
 
@@ -30,12 +35,17 @@
 
 3. Create a new payment method as the type choose "lifepay".
 
-4. Go to setting up the created payment method, expose:
-- The label is what the user will see at the time of placing the order and making the payment.
-- Your Merchant ID - the store number in the Lifepay system
-- Secret word for order verification - the secret phrase is also obtained from the interface of the seller of the Lifepay system;
-- Order description - what the user will see at the time of payment;
+4. Go to setting up the created payment method, set:
+- The label is what the user will see at the time of placing an order and making a payment.
+- Service ID - service number in the Lifepay system (can be taken from your personal account)
+- Key (key) - can also be obtained from the personal account of the seller
+- Secret key (skey) - secret key - also taken from the seller's personal account
+- Payment method - set in accordance with your contract (usually 100% prepayment);
 - VAT for products (if you have several types of goods, then each type may have its own VAT);
 - VAT for delivery;
-- Use server IP - use for server callbacks from the list;
-- Acceptable server list - list of servers;
+- Product type for products;
+- Type of goods for delivery - usually, service (service);
+- Object for products;
+- Object for delivery - usually, service (service);
+- Whether to use email for sending;
+- Order status after successfull payment - order status after completion
