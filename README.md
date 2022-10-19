@@ -1,6 +1,6 @@
 # Commerce Lifepay для Drupal 8 Commerce 2
 
-## Модуль предназначен для интеграции магазина на Drupal 8 и Commerce 2 с системой оплаты Lifepay (сайты www.lifepay.ru и www.lifepay.com)
+## Модуль предназначен для интеграции магазина на Drupal 8 и Commerce 2 с системой оплаты Lifepay (сайты www.life-pay.ru)
 
 1. Для использования модуля на вашем сайте его необходимо вам установить. Можно установить через меню установки модулей Drupal, а можно путем записи каталога uc_lifepay в директорию предназначенную для ваших сайтов "sites/all/modules" или "sites/default/modules"
 
@@ -27,7 +27,7 @@
 
 # Commerce Lifepay for Drupal 8 Commerce 2
 
-## The module is designed to integrate a store on Drupal 8 and Commerce 2 with the Lifepay payment system (www.lifepay.ru and www.lifepay.com)
+## The module is designed to integrate a store on Drupal 8 and Commerce 2 with the Lifepay payment system (www.life-pay.ru)
 
 1. To use the module on your site you need to install it. You can install it through the installation menu of Drupal modules, or you can by writing the uc_lifepay directory to a directory intended for your sites: "sites/all/modules" or "sites/default/modules"
 
