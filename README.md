@@ -22,6 +22,9 @@
 - Объект для доставки - обычно, service (сервис);
 - Задействовать ли email для отправки;
 - Order status after successfull payment - статус заказа после его выполнения
+- Также заполняем URL в личном кабинете продавца (URL скрипта для получения веб-хуков): https://вашсайт.ру/payment/notify/lifepay
+- Для URL страницы успешной покупки: https://вашсайт.ру/payment/return/lifepay
+- Для URL страницы ошибки: https://вашсайт.ру/payment/cancel/lifepay
 
 
 
