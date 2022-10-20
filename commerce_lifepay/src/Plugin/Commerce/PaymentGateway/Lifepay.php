@@ -136,7 +136,7 @@ class Lifepay extends OffsitePaymentGatewayBase
             '#type' => 'select',
             '#title' => $this->t("Object for products"),
             '#description' => $this->t("Select units for products"),
-            '#options' => self::getVatOptions(),
+            '#options' => self::getUnitOptions(),
             '#default_value' => $this->configuration['unit_products'],
             '#required' => true,
         ];
@@ -145,7 +145,7 @@ class Lifepay extends OffsitePaymentGatewayBase
             '#type' => 'select',
             '#title' => $this->t("Units for delivery"),
             '#description' => $this->t("Select units for delivery"),
-            '#options' => self::getVatOptions(),
+            '#options' => self::getUnitOptions(),
             '#default_value' => $this->configuration['unit_delivery'],
             '#required' => true,
         ];
@@ -431,8 +431,7 @@ class Lifepay extends OffsitePaymentGatewayBase
      */
     public static function getFormattedOrderItems($order, $configs): array
     {
-        $items = array_merge(self::getOrderItems($order, $configs), self::getOrderAdjustments($order, $configs));
-        return $items;
+        return array_merge(self::getOrderItems($order, $configs), self::getOrderAdjustments($order, $configs));
     }
 
     /**

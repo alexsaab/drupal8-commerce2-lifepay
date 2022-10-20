@@ -2,20 +2,16 @@ name: 'Lifepay'
 type: module
 description: 'Provides payment gateway for Lifepay.'
 package: Commerce
-# core: 8.x
+core_version_requirement: ^9.2 || ^10
+# core: 9.x
 # version: 1.x-dev
 dependencies:
   - commerce:commerce
   - commerce:commerce_payment
-
-# Information added by Drupal.org packaging script on 2018-05-10
-# version: '8.x-1.0-alpha2'
-# core: '8.x'
-# project: 'commerce_lifepay'
-# datestamp: 1525963097
+  - commerce:commerce_order
+  - commerce:commerce_price
 
 # Information added by Drupal.org packaging script on 2018-06-04
-version: '8.x-1.0-rc1'
-core: '8.x'
+version: '8.x-1.0'
 project: 'commerce_lifepay'
-datestamp: 1528095494
+datestamp: 1652265614
