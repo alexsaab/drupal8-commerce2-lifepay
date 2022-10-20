@@ -43,7 +43,10 @@ class LifepayForm extends BasePaymentOffsiteForm
         $items = [];
         $items['items'] = Lifepay::getFormattedOrderItems($order, $configs);
 
+        $paymentMachineName = $order->get('payment_gateway')->first()->entity->getOriginalId();
+
         $data = array(
+//            'notify_url' => $this->getNotifyUrl($paymentMachineName),
             'key' => $configs['key'],
             'cost' => $totalPriceNumber,
             'order_id' => $orderId,
@@ -61,6 +64,12 @@ class LifepayForm extends BasePaymentOffsiteForm
             $data['service_id'] = $configs['service_id'];
             $data['check'] = $this->getSign2('POST', $this->liveurl, $data, $configs['skey']);
         }
+
+//        print "<pre>";
+//        var_dump($data);
+//        print "<pre>";
+//
+//        die;
 
         return $this->buildRedirectForm($form, $form_state, $this->payment_url, $data, 'post');
     }

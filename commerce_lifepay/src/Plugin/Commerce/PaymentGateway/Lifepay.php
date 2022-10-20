@@ -30,6 +30,9 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  */
 class Lifepay extends OffsitePaymentGatewayBase
 {
+
+    protected $code = 'lifepay';
+
     /**
      * Return default module settengs
      * @return array
@@ -63,6 +66,27 @@ class Lifepay extends OffsitePaymentGatewayBase
     public function buildConfigurationForm(array $form, FormStateInterface $form_state)
     {
         $form = parent::buildConfigurationForm($form, $form_state);
+
+        $form['url_notify'] = [
+            '#type' => 'markup',
+            '#markup' => '<p>'.$this->t("Notify url").': '. $this->getSpecialUrl($this->code, 'notify').'</p>',
+            '#title' => $this->t("Notify url"),
+            '#description' => $this->t("Notify URL for callbacks"),
+        ];
+
+        $form['url_return'] = [
+            '#type' => 'markup',
+            '#markup' => '<p>'.$this->t("Return successfully url").': '.$this->getSpecialUrl($this->code, 'return').'</p>',
+            '#title' => $this->t("Return successfully url"),
+            '#description' => $this->t("Successfully URL for callbacks"),
+        ];
+
+        $form['url_cancel'] = [
+            '#type' => 'markup',
+            '#markup' => '<p>'.$this->t("Return failed url").': '.$this->getSpecialUrl($this->code, 'cancel').'</p>',
+            '#title' => $this->t("Return failed url"),
+            '#description' => $this->t("Failed URL for callbacks"),
+        ];
 
         $form['service_id'] = [
             '#type' => 'textfield',
@@ -224,12 +248,7 @@ class Lifepay extends OffsitePaymentGatewayBase
      */
     public function onNotify(Request $request)
     {
-
-        $posted = \Drupal::request()->request->get();
-
-        if (empty($posted)) {
-            $posted = \Drupal::request()->query->get();
-        }
+        $posted = $_REQUEST;
 
         $orderId = self::getRequest('order_id');
 
@@ -248,7 +267,7 @@ class Lifepay extends OffsitePaymentGatewayBase
         $paymentStorage = $this->entityTypeManager->getStorage('commerce_payment');
 
         if ($payment->state->value != 'complete') {
-            if ($this->checkIpnRequestIsValid()) {
+            if ($this->checkIpnRequestIsValid($posted)) {
                 $payment = $paymentStorage->create([
                     'state' => 'complete',
                     'amount' => $order->getTotalPrice(),
@@ -259,10 +278,10 @@ class Lifepay extends OffsitePaymentGatewayBase
                     'state' => 'complete',
                 ]);
                 $payment->save();
-                // Change order statuses to remove from busket
+                // Change order statuses to remove from bucket
                 $order->set('order_number', $orderId);
                 $order->set('cart', 0);
-                $order->set('state', 'validation');
+                $order->set('state', 'Completed');
                 $order->set('placed', time());
                 $order->save();
             } else {
@@ -625,5 +644,33 @@ class Lifepay extends OffsitePaymentGatewayBase
             'composite' => 'Составной предмет расчёта',
             'another' => 'Другое',
         ];
+    }
+
+    /**
+     * Return notify / success and fail url
+     * {@inheritdoc}
+     */
+    public function getSpecialUrl(string $paymentName, string $type): string
+    {
+        return \Drupal::request()->getSchemeAndHttpHost()."/web/payment/{$type}/{$paymentName}";
+    }
+
+
+    /**
+     * Logger function
+     * @param  [type] $var  [description]
+     * @param string $text [description]
+     * @return [type]       [description]
+     */
+    public function logger($var, $text = '')
+    {
+        $loggerFile = __DIR__.'/logger.log';
+        if (is_object($var) || is_array($var)) {
+            $var = (string) print_r($var, true);
+        } else {
+            $var = (string) $var;
+        }
+        $string = date("Y-m-d H:i:s")." - ".$text.' - '.$var."\n";
+        file_put_contents($loggerFile, $string, FILE_APPEND);
     }
 }
