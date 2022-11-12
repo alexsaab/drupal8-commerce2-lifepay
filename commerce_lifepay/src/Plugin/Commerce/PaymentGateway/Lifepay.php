@@ -465,7 +465,7 @@ class Lifepay extends OffsitePaymentGatewayBase
         unset($posted['check']);
 
         if ($this->configuration['api_version'] === '2.0') {
-            $signature = $this->getSign2("POST", $url, $posted, $this->configuration['skey']);
+            $signature = self::getSign2("POST", $url, $posted, $this->configuration['skey']);
         } elseif ($this->configuration['api_version'] === '1.0') {
             $signature = $this->getSign1($posted, $this->configuration['skey']);
         }
@@ -483,7 +483,7 @@ class Lifepay extends OffsitePaymentGatewayBase
      * @param string $argSeparator
      * @return string
      */
-    private function httpBuildQueryRfc3986($queryData, string $argSeparator = '&'): string
+    private static function httpBuildQueryRfc3986($queryData, string $argSeparator = '&'): string
     {
         $r = '';
         $queryData = (array)$queryData;
@@ -504,7 +504,7 @@ class Lifepay extends OffsitePaymentGatewayBase
      * @param false $skipPort
      * @return string
      */
-    private function getSign2($method, $url, $params, $secretKey, bool $skipPort = false)
+    public static function getSign2($method, $url, $params, $secretKey, bool $skipPort = false): string
     {
         ksort($params, SORT_LOCALE_STRING);
 
@@ -524,7 +524,7 @@ class Lifepay extends OffsitePaymentGatewayBase
                 $method,
                 $host,
                 $path,
-                $this->httpBuildQueryRfc3986($params)
+                self::httpBuildQueryRfc3986($params)
             )
         );
 

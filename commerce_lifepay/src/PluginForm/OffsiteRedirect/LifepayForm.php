@@ -12,10 +12,9 @@ use Drupal\commerce_lifepay\Plugin\Commerce\PaymentGateway\Lifepay;
  */
 class LifepayForm extends BasePaymentOffsiteForm
 {
-
-
     /** @var string payment url for redirect on partner.life-pay.ru */
     public $payment_url = 'https://partner.life-pay.ru/alba/input/';
+    public $echo_url = 'https://postman-echo.com/post/';
 
     /**
      * Return form for checkout
@@ -43,10 +42,7 @@ class LifepayForm extends BasePaymentOffsiteForm
         $items = [];
         $items['items'] = Lifepay::getFormattedOrderItems($order, $configs);
 
-        $paymentMachineName = $order->get('payment_gateway')->first()->entity->getOriginalId();
-
         $data = array(
-//            'notify_url' => $this->getNotifyUrl($paymentMachineName),
             'key' => $configs['key'],
             'cost' => $totalPriceNumber,
             'order_id' => $orderId,
@@ -62,16 +58,40 @@ class LifepayForm extends BasePaymentOffsiteForm
             unset($data['key']);
             $data['version'] = $configs['api_version'];
             $data['service_id'] = $configs['service_id'];
-            $data['check'] = $this->getSign2('POST', $this->liveurl, $data, $configs['skey']);
+            $data['check'] = Lifepay::getSign2('POST', $this->payment_url, $data, $configs['skey']);
         }
 
-//        print "<pre>";
-//        var_dump($data);
-//        print "<pre>";
-//
-//        die;
-
-        return $this->buildRedirectForm($form, $form_state, $this->payment_url, $data, 'post');
+        print <<<EOL
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Payment form Lifepay payment system</title>
+  <meta name="description" content="Payment form lifepay">
+  <meta name="author" content="SitePoint">
+</head>
+<body>
+EOL;
+        print "<form action='{$this->payment_url}' method='post' id='lifepay-payment-form'>";
+        foreach ($data as $key => $value) {
+            print "<input type='hidden' value='{$value}' name='$key'>";
+        }
+        print <<<EOL
+<div class="buttons">
+    <div class="pull-right">
+      <input type="submit" style="visibility:hidden;" value="Paynow"/>
+    </div>
+  </div>
+</form>
+<script type="text/javascript">
+    let paymentForm = document.getElementById('lifepay-payment-form')
+    paymentForm.submit()
+</script>
+</body>
+</html>
+EOL;
+        die;
     }
 
     /**
