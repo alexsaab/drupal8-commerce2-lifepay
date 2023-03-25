@@ -13,6 +13,9 @@ commerce_payment.commerce_payment_gateway.plugin.lifepay:
     shop_hostname:
       type: string
       label: 'Order description with host name'
+    schema_version:
+      type: string
+      label: 'Schema version'
     api_version:
       type: string
       label: 'API version'

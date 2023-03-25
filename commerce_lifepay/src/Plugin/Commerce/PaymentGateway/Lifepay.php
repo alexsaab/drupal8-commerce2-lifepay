@@ -3,21 +3,31 @@
 namespace Drupal\commerce_lifepay\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_order\Entity\OrderInterface;
+use Drupal\commerce_payment\Entity\PaymentInterface;
+use Drupal\commerce_payment\PaymentMethodTypeManager;
+use Drupal\commerce_payment\PaymentTypeManager;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
+use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Core\Language\LanguageManagerInterface;
+use Drupal\commerce_price\RounderInterface;
+use Drupal\commerce_payment\Entity\PaymentMethodInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Drupal\commerce_order\Entity\Order;
 use Drupal\Core\Messenger\MessengerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+
 
 /**
  * Provides the Lifepay payment gateway.
  * Class Lifepay
  *
  * @CommercePaymentGateway(
- *   id = "lafipay",
- *   label = @Translation("Lifepay"),
- *   display_label = @Translation("Lifepay"),
+ *   id = "laifpay",
+ *   label = "Lifepay",
+ *   display_label = "Lifepay",
  *   forms = {
  *     "offsite-payment" = "Drupal\commerce_lifepay\PluginForm\OffsiteRedirect\LifepayForm",
  *   },
@@ -28,10 +38,40 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  * )
  * @package Drupal\commerce_lifepay\Plugin\Commerce\PaymentGateway
  */
-class Lifepay extends OffsitePaymentGatewayBase
+class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterface
 {
 
     protected $code = 'lifepay';
+
+    /**
+     * Constructor
+     */
+    public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, PaymentTypeManager $payment_type_manager, PaymentMethodTypeManager $payment_method_type_manager, TimeInterface $time, RounderInterface $rounder, LanguageManagerInterface $language_manager)
+    {
+        parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_type_manager, $payment_type_manager, $payment_method_type_manager, $time);
+
+        $this->rounder = $rounder;
+        $this->languageManager = $language_manager;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition)
+    {
+        return new static(
+            $configuration,
+            $plugin_id,
+            $plugin_definition,
+            $container->get('entity_type.manager'),
+            $container->get('plugin.manager.commerce_payment_type'),
+            $container->get('plugin.manager.commerce_payment_method_type'),
+            $container->get('datetime.time'),
+            $container->get('commerce_price.rounder'),
+            $container->get('language_manager')
+        );
+    }
+
 
     /**
      * Return default module settengs
@@ -45,6 +85,7 @@ class Lifepay extends OffsitePaymentGatewayBase
                 'key' => '',
                 'skey' => '',
                 'shop_hostname' => 'Store www...., order #',
+                'schema_version' => 'https://',
                 'api_version' => '1.0',
                 'payment_method' => 'full_prepayment',
                 'vat_products' => 'none',
@@ -69,14 +110,15 @@ class Lifepay extends OffsitePaymentGatewayBase
 
         $form['url_notify'] = [
             '#type' => 'markup',
-            '#markup' => '<p>'.$this->t("Notify url").': '. $this->getSpecialUrl($this->code, 'notify').'</p>',
+            '#markup' => '<p>'.$this->t("Notify url").': '.$this->getSpecialUrl($this->code, 'notify').'</p>',
             '#title' => $this->t("Notify url"),
             '#description' => $this->t("Notify URL for callbacks"),
         ];
 
         $form['url_return'] = [
             '#type' => 'markup',
-            '#markup' => '<p>'.$this->t("Return successfully url").': '.$this->getSpecialUrl($this->code, 'return').'</p>',
+            '#markup' => '<p>'.$this->t("Return successfully url").': '.$this->getSpecialUrl($this->code,
+                    'return').'</p>',
             '#title' => $this->t("Return successfully url"),
             '#description' => $this->t("Successfully URL for callbacks"),
         ];
@@ -106,7 +148,7 @@ class Lifepay extends OffsitePaymentGatewayBase
 
         $form['skey'] = [
             '#type' => 'textfield',
-            '#title' => $this->t("Service key"),
+            '#title' => $this->t("Secret key"),
             '#description' => $this->t("Input secret key here"),
             '#default_value' => $this->configuration['skey'],
             '#required' => true,
@@ -118,6 +160,15 @@ class Lifepay extends OffsitePaymentGatewayBase
             '#description' => $this->t("Order description with host name"),
             '#default_value' => $this->configuration['shop_hostname'],
             '#required' => false,
+        ];
+
+        $form['schema_version'] = [
+            '#type' => 'select',
+            '#title' => $this->t("Schema version"),
+            '#description' => $this->t("See you store schema version"),
+            '#options' => self::getSchemaVersionOptions(),
+            '#default_value' => $this->configuration['schema_version'],
+            '#required' => true,
         ];
 
         $form['api_version'] = [
@@ -229,6 +280,7 @@ class Lifepay extends OffsitePaymentGatewayBase
             $this->configuration['key'] = $values['key'];
             $this->configuration['skey'] = $values['skey'];
             $this->configuration['shop_hostname'] = $values['shop_hostname'];
+            $this->configuration['schema_version'] = $values['schema_version'];
             $this->configuration['api_version'] = $values['api_version'];
             $this->configuration['payment_method'] = $values['payment_method'];
             $this->configuration['vat_products'] = $values['vat_products'];
@@ -243,7 +295,7 @@ class Lifepay extends OffsitePaymentGatewayBase
 
     /**
      * Notity payment callback
-     * @param Request $request
+     * @param  Request  $request
      * @return void
      */
     public function onNotify(Request $request)
@@ -263,19 +315,22 @@ class Lifepay extends OffsitePaymentGatewayBase
         $order = Order::load($orderId);
         $transactionId = self::getRequest('tid');
         $paymentStorage = \Drupal::entityTypeManager()->getStorage('commerce_payment')->loadByProperties(['order_id' => [$orderId]]);
-        $payment = end($paymentStorage);
-        $paymentStorage = $this->entityTypeManager->getStorage('commerce_payment');
 
-        if ($payment->state->value != 'complete') {
+        if (empty($paymentStorage)) {
+            // Получаем хранилище для транзакций
+            $paymentStorage = $this->entityTypeManager->getStorage('commerce_payment');
+
             if ($this->checkIpnRequestIsValid($posted)) {
                 $payment = $paymentStorage->create([
                     'state' => 'complete',
                     'amount' => $order->getTotalPrice(),
-                    'payment_gateway' => $this->entityId,
+                    'payment_gateway' => $this->parentEntity->id(),
                     'order_id' => $orderId,
                     'remote_id' => $transactionId,
                     'remote_state' => 'complete',
                     'state' => 'complete',
+                    'authorized' => time(),
+                    'completed' => time(),
                 ]);
                 $payment->save();
                 // Change order statuses to remove from bucket
@@ -289,15 +344,19 @@ class Lifepay extends OffsitePaymentGatewayBase
                 return;
             }
         } else {
-            \Drupal::messenger()->addMessage($this->t('Order complete! Thank you for payment'), 'success');
-            $this->onReturn($order, $request);
-            return;
+            // TODO тут сделать какую - то обработку что транзакци уже такая есть
+            $payment = end($paymentStorage);
+            if ($payment->state->value == 'complete') {
+                \Drupal::messenger()->addMessage($this->t('Order complete! Thank you for payment'), 'success');
+                $this->onReturn($order, $request);
+                return;
+            }
         }
     }
 
     /**
      * Get post or get method
-     * @param null $param
+     * @param  null  $param
      */
     public static function getRequest($param = null)
     {
@@ -319,7 +378,7 @@ class Lifepay extends OffsitePaymentGatewayBase
 
     /**
      * Get order amount
-     * @param \Drupal\commerce_price\Price $price
+     * @param  \Drupal\commerce_price\Price  $price
      * @return string
      */
     public static function getOrderTotalAmount(\Drupal\commerce_price\Price $price)
@@ -329,7 +388,7 @@ class Lifepay extends OffsitePaymentGatewayBase
 
     /**
      * Get order currency
-     * @param \Drupal\commerce_price\Price $price
+     * @param  \Drupal\commerce_price\Price  $price
      * @return string
      */
     public static function getOrderCurrencyCode(\Drupal\commerce_price\Price $price)
@@ -337,12 +396,14 @@ class Lifepay extends OffsitePaymentGatewayBase
         return $price->getCurrencyCode();
     }
 
+
     /**
      * Callback order success proceed
      * {@inheritdoc}
      */
     public function onReturn(OrderInterface $order, Request $request)
     {
+        parent::onReturn($order, $request);
         \Drupal::messenger()->addMessage($this->t('Order complete! Thank you for payment'), 'success');
         $orderId = self::getRequest('order_id');
         if ($user = \Drupal::currentUser()) {
@@ -360,14 +421,13 @@ class Lifepay extends OffsitePaymentGatewayBase
         }
         $response = new RedirectResponse($url, 302);
         $response->send();
-        return;
     }
 
 
     /**
      * Callback order fail proceed
-     * @param OrderInterface $order
-     * @param Request $request
+     * @param  OrderInterface  $order
+     * @param  Request  $request
      */
     public function onCancel(OrderInterface $order, Request $request)
     {
@@ -460,7 +520,7 @@ class Lifepay extends OffsitePaymentGatewayBase
      */
     private function checkIpnRequestIsValid($posted): bool
     {
-        $url = \Drupal::request()->getHost() . $_SERVER['REQUEST_URI'];
+        $url = $this->configuration['schema_version'].\Drupal::request()->getHost().$_SERVER['REQUEST_URI'];
         $check = $posted['check'];
         unset($posted['check']);
 
@@ -480,16 +540,16 @@ class Lifepay extends OffsitePaymentGatewayBase
     /**
      * Part of sign generator
      * @param $queryData
-     * @param string $argSeparator
+     * @param  string  $argSeparator
      * @return string
      */
     private static function httpBuildQueryRfc3986($queryData, string $argSeparator = '&'): string
     {
         $r = '';
-        $queryData = (array)$queryData;
+        $queryData = (array) $queryData;
         if (!empty($queryData)) {
             foreach ($queryData as $k => $queryVar) {
-                $r .= $argSeparator . $k . '=' . rawurlencode($queryVar);
+                $r .= $argSeparator.$k.'='.rawurlencode($queryVar);
             }
         }
         return trim($r, $argSeparator);
@@ -501,7 +561,7 @@ class Lifepay extends OffsitePaymentGatewayBase
      * @param $url
      * @param $params
      * @param $secretKey
-     * @param false $skipPort
+     * @param  false  $skipPort
      * @return string
      */
     public static function getSign2($method, $url, $params, $secretKey, bool $skipPort = false): string
@@ -532,7 +592,7 @@ class Lifepay extends OffsitePaymentGatewayBase
             hash_hmac("sha256",
                 "{$data}",
                 "{$secretKey}",
-                TRUE
+                true
             )
         );
 
@@ -547,11 +607,11 @@ class Lifepay extends OffsitePaymentGatewayBase
      */
     private function getSign1($posted, $key): string
     {
-        return rawurlencode(md5($posted['tid'] . $posted['name'] . $posted['comment'] . $posted['partner_id'] .
-            $posted['service_id'] . $posted['order_id'] . $posted['type'] . $posted['cost'] . $posted['income_total'] .
-            $posted['income'] . $posted['partner_income'] . $posted['system_income'] . $posted['command'] .
-            $posted['phone_number'] . $posted['email'] . $posted['resultStr'] .
-            $posted['date_created'] . $posted['version'] . $key));
+        return rawurlencode(md5($posted['tid'].$posted['name'].$posted['comment'].$posted['partner_id'].
+            $posted['service_id'].$posted['order_id'].$posted['type'].$posted['cost'].$posted['income_total'].
+            $posted['income'].$posted['partner_income'].$posted['system_income'].$posted['command'].
+            $posted['phone_number'].$posted['email'].$posted['resultStr'].
+            $posted['date_created'].$posted['version'].$key));
     }
 
     /**
@@ -568,6 +628,18 @@ class Lifepay extends OffsitePaymentGatewayBase
             'vat118' => '18%, поверх',
             'vat20' => '20%, включая',
             'vat120' => '20%, поверх',
+        ];
+    }
+
+    /**
+     * Get Schema version options
+     * @return string[]
+     */
+    private static function getSchemaVersionOptions(): array
+    {
+        return [
+            'https://' => 'https://',
+            'http://' => 'http://',
         ];
     }
 
@@ -652,14 +724,14 @@ class Lifepay extends OffsitePaymentGatewayBase
      */
     public function getSpecialUrl(string $paymentName, string $type): string
     {
-        return \Drupal::request()->getSchemeAndHttpHost()."/web/payment/{$type}/{$paymentName}";
+        return \Drupal::request()->getSchemeAndHttpHost()."/payment/{$type}/{$paymentName}";
     }
 
 
     /**
      * Logger function
      * @param  [type] $var  [description]
-     * @param string $text [description]
+     * @param  string  $text  [description]
      * @return [type]       [description]
      */
     public function logger($var, $text = '')

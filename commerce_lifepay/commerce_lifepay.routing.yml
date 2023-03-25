@@ -1,33 +1,13 @@
-lifepay.notify:
-  path: '/payment/notify/{commerce_payment_gateway}'
+lifepay.success:
+  path: '/lifepay/success'
   defaults:
-    _controller: '\Drupal\commerce_payment\Controller\PaymentNotificationController::notifyPage'
+    _controller: '\Drupal\commerce_lifepay\Controller\PaymentController::success'
   requirements:
     _access: 'TRUE'
-  options:
-    parameters:
-      commerce_payment_gateway:
-        type: entity:commerce_payment_gateway
 
-lifepay.return:
-  path: '/payment/return/{commerce_payment_gateway}'
+lifepay.fail:
+  path: '/lifepay/fail'
   defaults:
-    _controller: '\Drupal\commerce_lifepay\Plugin\Commerce\PaymentGateway\Lifepay::onReturn'
+    _controller: '\Drupal\commerce_lifepay\Controller\PaymentController::fail'
   requirements:
     _access: 'TRUE'
-  options:
-    parameters:
-      commerce_payment_gateway:
-        type: entity:commerce_payment_gateway
-
-lifepay.cancel:
-  path: '/payment/cancel/{commerce_payment_gateway}'
-  defaults:
-    _controller: '\Drupal\commerce_lifepay\Plugin\Commerce\PaymentGateway\Lifepay::onCancel'
-  requirements:
-    _access: 'TRUE'
-  options:
-    parameters:
-      commerce_payment_gateway:
-        type: entity:commerce_payment_gateway
-
