@@ -4,13 +4,13 @@ namespace Drupal\commerce_lifepay\Plugin\Commerce\PaymentGateway;
 
 use Drupal\commerce_order\Entity\OrderInterface;
 use Drupal\commerce_payment\Entity\PaymentInterface;
+
 use Drupal\commerce_payment\PaymentMethodTypeManager;
 use Drupal\commerce_payment\PaymentTypeManager;
 use Drupal\commerce_payment\Plugin\Commerce\PaymentGateway\OffsitePaymentGatewayBase;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\commerce_price\RounderInterface;
-use Drupal\commerce_payment\Entity\PaymentMethodInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Drupal\commerce_order\Entity\Order;
@@ -117,15 +117,14 @@ class Lifepay extends OffsitePaymentGatewayBase implements LifepayPaymentInterfa
 
         $form['url_return'] = [
             '#type' => 'markup',
-            '#markup' => '<p>'.$this->t("Return successfully url").': '.$this->getSpecialUrl($this->code,
-                    'return').'</p>',
+            '#markup' => '<p>'.$this->t("Return successfully url").': '.\Drupal::request()->getSchemeAndHttpHost().'/lifepay/success'.'</p>',
             '#title' => $this->t("Return successfully url"),
             '#description' => $this->t("Successfully URL for callbacks"),
         ];
 
         $form['url_cancel'] = [
             '#type' => 'markup',
-            '#markup' => '<p>'.$this->t("Return failed url").': '.$this->getSpecialUrl($this->code, 'cancel').'</p>',
+            '#markup' => '<p>'.$this->t("Return failed url").': '.\Drupal::request()->getSchemeAndHttpHost().'/lifepay/cancel'.'</p>',
             '#title' => $this->t("Return failed url"),
             '#description' => $this->t("Failed URL for callbacks"),
         ];
