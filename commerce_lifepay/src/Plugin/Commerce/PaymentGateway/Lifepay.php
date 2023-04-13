@@ -25,7 +25,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
  * Class Lifepay
  *
  * @CommercePaymentGateway(
- *   id = "laifpay",
+ *   id = "lifepay",
  *   label = "Lifepay",
  *   display_label = "Lifepay",
  *   forms = {
